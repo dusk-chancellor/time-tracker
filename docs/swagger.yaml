@@ -1,0 +1,220 @@
+definitions:
+  http.PassportRequest:
+    properties:
+      passport_number:
+        type: string
+    type: object
+  http.TaskResponse:
+    properties:
+      tasks:
+        items:
+          $ref: '#/definitions/models.Task'
+        type: array
+      user:
+        type: string
+    type: object
+  models.Task:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      spentTime:
+        type: string
+      startTime:
+        type: string
+      updatedAt:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.User:
+    properties:
+      address:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      passport_number:
+        type: integer
+      passport_serie:
+        type: integer
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /task:
+    get:
+      description: Получение трудозатрат по пользователю за период задача-сумма часов
+        и минут с сортировкой от большей затраты к меньшей
+      operationId: get-user-worklist
+      parameters:
+      - description: User ID
+        in: query
+        name: user_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User worklist
+          schema:
+            $ref: '#/definitions/http.TaskResponse'
+        "406":
+          description: 'Not acceptable: Invalid user ID'
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get user worklist
+    post:
+      consumes:
+      - application/json
+      description: Начать отсчет времени по задаче для пользователя/Закончить отсчет
+        времени по задаче для пользователя
+      operationId: start-stop-task
+      parameters:
+      - description: 'Action to perform: start or stop'
+        in: query
+        name: action
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task ID
+          schema:
+            type: string
+        "400":
+          description: 'Bad request: Invalid input'
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Start or stop a task
+  /user:
+    delete:
+      consumes:
+      - application/json
+      description: Удаление пользователя
+      operationId: delete-user
+      parameters:
+      - description: Passport information
+        in: body
+        name: passport
+        required: true
+        schema:
+          $ref: '#/definitions/http.PassportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User deleted successfully
+          schema:
+            type: string
+        "400":
+          description: 'Bad request: Invalid input'
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Delete a user
+    get:
+      description: 'Получение данных пользователей: Фильтрация по всем полям. Пагинация.'
+      operationId: get-all-users-data
+      parameters:
+      - description: Optional filter criteria
+        in: query
+        name: filter
+        type: string
+      - description: Optional page number for pagination
+        in: query
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data received successfully
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get all users' data
+    patch:
+      consumes:
+      - application/json
+      description: Изменение данных пользователя
+      operationId: edit-user
+      parameters:
+      - description: User object to update
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User edited successfully
+          schema:
+            type: string
+        "400":
+          description: 'Bad request: Invalid input'
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Edit user details
+    post:
+      consumes:
+      - application/json
+      description: Добавление нового пользователя в формате
+      operationId: add-user
+      parameters:
+      - description: Passport information
+        in: body
+        name: passport
+        required: true
+        schema:
+          $ref: '#/definitions/http.PassportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User created successfully
+          schema:
+            type: string
+        "400":
+          description: 'Bad request: Invalid input'
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Add a new user
+swagger: "2.0"
