@@ -17,6 +17,7 @@ func (s *Storage) AddUser(ctx context.Context, user models.User) (int32, error) 
 		RETURNING id`,
 	)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return 0, err
 	}
 
@@ -26,10 +27,13 @@ func (s *Storage) AddUser(ctx context.Context, user models.User) (int32, error) 
 		).Scan(&userID)
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code.Name() == "unique_violation" {
+			s.logger.Error(err.Error())
 			return 0, timetracker.ErrUserExists
 		}
+		s.logger.Error(err.Error())
 		return 0, err
 	}
+	s.logger.Info("User created")
 	return userID, nil
 }
 
@@ -39,6 +43,7 @@ func (s *Storage) GetUser(ctx context.Context, pSerie, pNumber int32) (models.Us
 		`SELECT id, surname, name, patronymic, address WHERE passport_serie = $1 AND passport_number = $2`,
 	)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return models.User{}, err
 	}
 
@@ -56,9 +61,50 @@ func (s *Storage) GetUser(ctx context.Context, pSerie, pNumber int32) (models.Us
 		&user.Address,
 	)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return models.User{}, err
 	}
+	s.logger.Info("User fetched")
 	return user, nil
+}
+
+func (s *Storage) GetAllUsers(ctx context.Context) ([]models.User, error) {
+
+	query, err := s.db.Prepare(
+		`SELECT id, passport_serie, passport_number, surname, name, patronymic, address
+		FROM users`,
+	)
+	if err != nil {
+		s.logger.Error(err.Error())
+		return nil, err
+	}
+
+	rows, err := query.QueryContext(ctx)
+	if err != nil {
+		s.logger.Error(err.Error())
+		return nil, err
+	}
+
+	users := make([]models.User, 0)
+	for rows.Next() {
+		user := models.User{}
+		err = rows.Scan(
+			&user.Id,
+			&user.PassportSerie,
+			&user.PassportNumber,
+			&user.Surname,
+			&user.Name,
+			&user.Patronymic,
+			&user.Address,
+		)
+		if err != nil {
+			s.logger.Error(err.Error())
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	s.logger.Info("All users fetched")
+	return users, nil
 }
 
 func (s *Storage) UpdateUser(ctx context.Context, user models.User) (int32, error) {
@@ -70,6 +116,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user models.User) (int32, erro
 		RETURNING id`,
 	)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return 0, err
 	}
 
@@ -84,8 +131,10 @@ func (s *Storage) UpdateUser(ctx context.Context, user models.User) (int32, erro
 		user.PassportNumber,
 	).Scan(&userID)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return 0, err
 	}
+	s.logger.Info("User updated")
 	return userID, nil
 }
 
@@ -96,6 +145,7 @@ func (s *Storage) DeleteUser(ctx context.Context, pSerie, pNumber int32) error {
 		WHERE passport_serie = $1 AND passport_number = $2`,
 	)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return err
 	}
 
@@ -103,40 +153,10 @@ func (s *Storage) DeleteUser(ctx context.Context, pSerie, pNumber int32) error {
 		ctx, pSerie, pNumber,
 	)
 	if err != nil {
+		s.logger.Error(err.Error())
 		return err
 	}
+
+	s.logger.Info("User %s %s deleted", string(pSerie), string(pNumber))
 	return nil
-}
-
-func (s *Storage) GetAllUsers(ctx context.Context) ([]models.User, error) {
-
-	query, err := s.db.Prepare(
-		`SELECT id, passport_serie, passport_number, surname, name, patronymic, address
-		FROM users`,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	var users []models.User
-	rows, err := query.QueryContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var user models.User
-		if err := rows.Scan(
-				&user.Id,
-				&user.PassportSerie,
-				&user.PassportNumber,
-				&user.Surname,
-				&user.Name,
-				&user.Patronymic,
-				&user.Address,
-				); err != nil {
-			return nil, err
-		}
-		users = append(users, user)
-	}
-	return users, nil
 }

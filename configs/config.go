@@ -27,7 +27,7 @@ type DB struct {
 }
 
 func ReadConfig() *Config{
-	err := godotenv.Load(".env")
+	err := godotenv.Load("./configs/.env")
 	if err != nil {
 		panic(err)
 	}

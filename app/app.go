@@ -38,10 +38,12 @@ func NewApp(ctx context.Context, logger *slog.Logger, cfg *configs.Config) *App 
 	appHandlers := handlers.NewHandlers(appService, ctx, logger)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET    /user", appHandlers.GetAllUsersDataHandler())
 	mux.HandleFunc("POST   /user", appHandlers.AddUserHandler())
 	mux.HandleFunc("PATCH  /user", appHandlers.EditUserHandler())
-	mux.HandleFunc("REMOVE /user", appHandlers.DeleteUserHandler())
+	mux.HandleFunc("DELETE /user", appHandlers.DeleteUserHandler())
 	mux.HandleFunc("POST   /task", appHandlers.StartStopTaskHandler())
+	mux.HandleFunc("GET    /task", appHandlers.GetUserWorklistHandler())
 
 	app := &App{
 		HttpServer: http.Server{
@@ -55,12 +57,19 @@ func NewApp(ctx context.Context, logger *slog.Logger, cfg *configs.Config) *App 
 }
 
 
-func (a *App) Run() error {
-	return a.HttpServer.ListenAndServe()
+func (a *App) Run() {
+	if err := a.HttpServer.ListenAndServe(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			a.logger.Info("server closed")
+			return
+		} 
+		a.logger.Error(err.Error())
+		return
+	}
 }
 
 func (a *App) Shutdown() {
-	if err := a.HttpServer.Shutdown(context.Background()); err != nil {
+	if err := a.HttpServer.Shutdown(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -19,11 +20,11 @@ const (
 // TODO: Add user handler		  [+]
 // TODO: Edit user handler		  [+]
 // TODO: Delete user handler	  [+]
-// TODO: Start & Stop handler	  [-] - in process
-// TODO: Get user worklist		  [-]
-// TODO: Get all users data		  [-]
-// TODO: All database methods	  [-]
-// TODO: Cover code with logs	  [-]
+// TODO: Start & Stop handler	  [+]
+// TODO: Get user worklist		  [+]
+// TODO: Get all users data		  [+]
+// TODO: All database methods	  [+]
+// TODO: Cover code with logs	  [+]
 // TODO: Config .env file		  [+]
 // TODO: Generate swagger for API [-]
 
@@ -35,11 +36,9 @@ func main() {
 	app := app.NewApp(ctx, logger, cfg)
 	app.MigrateDB()
 
-	logger.Info("Starting server on %s:%s", cfg.Server.Host, cfg.Server.Port)
+	fmt.Printf("Server started at %s\n", cfg.Server.Host+":"+cfg.Server.Port)
 	go func() {
-		if err := app.Run(); err != nil {
-			panic(err)
-		}
+		app.Run()
 	}()
 
 	stop := make(chan os.Signal, 1)
