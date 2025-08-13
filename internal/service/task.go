@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dusk-chancellor/time-tracker/models"
+	"github.com/dusk-chancellor/time-tracker/internal/models"
 )
 
 

@@ -8,14 +8,14 @@ import (
 	"net/http"
 
 	"github.com/dusk-chancellor/time-tracker/configs"
-	"github.com/dusk-chancellor/time-tracker/time-tracker/repository/postgres"
-	"github.com/dusk-chancellor/time-tracker/time-tracker/service"
+	"github.com/dusk-chancellor/time-tracker/internal/repository/postgres"
+	"github.com/dusk-chancellor/time-tracker/internal/service"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	swaggerAPI "github.com/dusk-chancellor/time-tracker/swagger_api"
-	handlers "github.com/dusk-chancellor/time-tracker/time-tracker/delivery/http"
+	handlers "github.com/dusk-chancellor/time-tracker/internal/delivery/http"
 )
 
 type App struct {
@@ -30,20 +30,32 @@ func NewApp(ctx context.Context, logger *slog.Logger, cfg *configs.Config) *App 
 	if err != nil {
 		panic(err)
 	}
+	apiCfg := &swaggerAPI.Configuration{
+		DefaultHeader: make(map[string]string),
+		Debug:         false,
+		Servers: []swaggerAPI.ServerConfiguration{
+			{
+				URL: cfg.OuterAPI,
+				Description: "Outer API",
+			},
+		},
+		OperationServers: map[string]swaggerAPI.ServerConfigurations{
+		},
+	}
 
-	apiClient := swaggerAPI.NewAPIClient(swaggerAPI.NewConfiguration())
-
+	apiClient := swaggerAPI.NewAPIClient(apiCfg)
 	appService := service.NewService(logger, db, apiClient)
-
 	appHandlers := handlers.NewHandlers(appService, ctx, logger)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET    /user", appHandlers.GetAllUsersDataHandler())
-	mux.HandleFunc("POST   /user", appHandlers.AddUserHandler())
-	mux.HandleFunc("PATCH  /user", appHandlers.EditUserHandler())
-	mux.HandleFunc("DELETE /user", appHandlers.DeleteUserHandler())
-	mux.HandleFunc("POST   /task", appHandlers.StartStopTaskHandler())
-	mux.HandleFunc("GET    /task", appHandlers.GetUserWorklistHandler())
+
+	mux.HandleFunc("GET    /user", appHandlers.GetAllUsersDataHandler)
+	mux.HandleFunc("POST   /user", appHandlers.AddUserHandler)
+	mux.HandleFunc("PATCH  /user", appHandlers.EditUserHandler)
+	mux.HandleFunc("DELETE /user", appHandlers.DeleteUserHandler)
+
+	mux.HandleFunc("POST   /task", appHandlers.StartStopTaskHandler)
+	mux.HandleFunc("GET    /task", appHandlers.GetUserWorklistHandler)
 
 	app := &App{
 		HttpServer: http.Server{
@@ -57,21 +69,21 @@ func NewApp(ctx context.Context, logger *slog.Logger, cfg *configs.Config) *App 
 }
 
 
-func (a *App) Run() {
+func (a *App) Run() error {
 	if err := a.HttpServer.ListenAndServe(); err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
 			a.logger.Info("server closed")
-			return
+			return err
 		} 
 		a.logger.Error(err.Error())
-		return
+		return err
 	}
+
+	return nil
 }
 
-func (a *App) Shutdown() {
-	if err := a.HttpServer.Shutdown(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		panic(err)
-	}
+func (a *App) Shutdown(ctx context.Context) {
+	a.HttpServer.Shutdown(ctx)
 }
 
 func (a *App) MigrateDB() {

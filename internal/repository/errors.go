@@ -1,4 +1,4 @@
-package timetracker
+package repository
 
 import "errors"
 

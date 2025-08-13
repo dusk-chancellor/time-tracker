@@ -8,43 +8,44 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/dusk-chancellor/time-tracker/app"
+	"github.com/dusk-chancellor/time-tracker/internal/app"
 	"github.com/dusk-chancellor/time-tracker/configs"
 )
 
 const (
 	envDev  = "dev"
 	envProd = "prod"
+	defaultCfgPath = "./configs/local.yaml"
 )
 
-// TODO: Add user handler		  [+]
-// TODO: Edit user handler		  [+]
-// TODO: Delete user handler	  [+]
-// TODO: Start & Stop handler	  [+]
-// TODO: Get user worklist		  [+]
-// TODO: Get all users data		  [+]
-// TODO: All database methods	  [+]
-// TODO: Cover code with logs	  [+]
-// TODO: Config .env file		  [+]
-// TODO: Generate swagger for API [-]
-
 func main() {
-	cfg := configs.ReadConfig()
+	cfgPath, ok := os.LookupEnv("CONFIG_PATH")
+	if !ok {
+		cfgPath = defaultCfgPath
+	}
+
+	cfg, err := configs.LoadConfig(cfgPath)
+	if err != nil {
+		panic(err)
+	}
+
 	logger := initLogger(cfg.Env)
 	ctx := context.Background()
 
 	app := app.NewApp(ctx, logger, cfg)
-	app.MigrateDB()
 
-	fmt.Printf("Server started at %s\n", cfg.Server.Host+":"+cfg.Server.Port)
+	fmt.Printf("Server started at %s\n", cfg.Server.Host + ":" + cfg.Server.Port)
 	go func() {
-		app.Run()
+		if err := app.Run(); err != nil {
+			panic(err)
+		}
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
 	<-stop
-	app.Shutdown()
+	app.Shutdown(ctx)
 }
 
 func initLogger(env string) *slog.Logger {

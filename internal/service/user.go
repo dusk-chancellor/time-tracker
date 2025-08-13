@@ -7,8 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dusk-chancellor/time-tracker/models"
-	timetracker "github.com/dusk-chancellor/time-tracker/time-tracker"
+	"github.com/dusk-chancellor/time-tracker/internal/models"
 )
 
 func (s *Service) GetAllUsersData(ctx context.Context, filter, page string) ([]models.User, error) {
@@ -22,7 +21,7 @@ func (s *Service) GetAllUsersData(ctx context.Context, filter, page string) ([]m
 	}
 	filteredUsers := filterFunc(users, filter)
 	if filteredUsers == nil {
-		return nil, timetracker.ErrUknownFilter
+		return nil, ErrUknownFilter
 	}
 
 	var pagedUsers [][]models.User

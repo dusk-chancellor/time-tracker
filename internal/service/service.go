@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/dusk-chancellor/time-tracker/models"
+	"github.com/dusk-chancellor/time-tracker/internal/models"
 	swaggerAPI "github.com/dusk-chancellor/time-tracker/swagger_api"
 )
 

@@ -2,16 +2,18 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
-	"github.com/dusk-chancellor/time-tracker/models"
-	timetracker "github.com/dusk-chancellor/time-tracker/time-tracker"
-	"github.com/lib/pq"
+	"github.com/dusk-chancellor/time-tracker/internal/models"
+	repoErrors "github.com/dusk-chancellor/time-tracker/internal/repository"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 
 func (s *Storage) AddUser(ctx context.Context, user models.User) (int32, error) {
 
-	query, err := s.db.Prepare(
+	query, err := s.pool.Prepare(
 		`INSERT INTO users (passport_serie, passport_number, surname, name, patronymic, address)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id`,
@@ -26,9 +28,10 @@ func (s *Storage) AddUser(ctx context.Context, user models.User) (int32, error) 
 		ctx, user.PassportSerie, user.PassportNumber, user.Surname, user.Name, user.Patronymic, user.Address,
 		).Scan(&userID)
 	if err != nil {
-		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code.Name() == "unique_violation" {
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
 			s.logger.Error(err.Error())
-			return 0, timetracker.ErrUserExists
+			return 0, repoErrors.ErrUserExists
 		}
 		s.logger.Error(err.Error())
 		return 0, err

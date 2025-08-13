@@ -1,50 +1,39 @@
 package configs
 
 import (
-	"os"
+	"fmt"
 
-	"github.com/joho/godotenv"
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
-	Env 		   string `env:"ENV" envDefault:"dev"`
-	MigrationsPath string `env:"MIGRATIONS_PATH" envDefault:"./migrations"`
-	Server 		   Server
-	DB 			   DB
+	Env 		   string `yaml:"env"`
+	MigrationsPath string `yaml:"migrations_path"`
+	Server 		   Server `yaml:"server"`
+	DB 			   DB	  `yaml:"db"`
+	OuterAPI 	   string `yaml:"outer_api"`
 }
 
 type Server struct {
-	Host string `env:"SERVER_HOST" envDefault:"127.0.0.1"`
-	Port string `env:"SERVER_PORT" envDefault:"8080"`
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
 }
 
 type DB struct {
-	User 	   string `env:"DB_USER"`
-	Password string `env:"DB_PASSWORD"`
-	Name 	   string `env:"DB_NAME"`
-	Host 	   string `env:"DB_HOST" envDefault:"127.0.0.1"`
-	Port 	   string `env:"DB_PORT" envDefault:"5432"`
+	User 	   string `yaml:"user"`
+	Password   string `yaml:"password"`
+	Name 	   string `yaml:"name"`
+	Host 	   string `yaml:"host"`
+	Port 	   string `yaml:"port"`
 }
 
-func ReadConfig() *Config{
-	err := godotenv.Load("./configs/.env")
+func LoadConfig(cfgPath string) (*Config, error) {
+	var cfg Config
+
+	err := cleanenv.ReadConfig(cfgPath, &cfg)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("error occurred while loading config: %v", err)
 	}
 
-	return &Config{
-		Env: 			os.Getenv("ENV"),
-		MigrationsPath: os.Getenv("MIGRATIONS_PATH"),
-		Server: Server{
-			Host: os.Getenv("SERVER_HOST"),
-			Port: os.Getenv("SERVER_PORT"),
-		},	
-		DB: DB{
-			User: 	  os.Getenv("DB_USER"),
-			Password:   os.Getenv("DB_PASSWORD"),
-			Name:   	  os.Getenv("DB_NAME"),
-			Host: 	  os.Getenv("DB_HOST"),
-			Port: 	  os.Getenv("DB_PORT"),
-		},
-	}
+	return &cfg, nil
 }
