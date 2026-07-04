@@ -2,34 +2,34 @@ package configs
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+const defaultCfgPath = "./configs/local.env"
+
 type Config struct {
-	Env 		   string `yaml:"env"`
-	MigrationsPath string `yaml:"migrations_path"`
-	Server 		   Server `yaml:"server"`
-	DB 			   DB	  `yaml:"db"`
-	OuterAPI 	   string `yaml:"outer_api"`
+	Env 			string `env:"ENV,required"`
+	MigrationsPath 	string `env:"MIGRATIONS_PATH,required"`
+	// server cfg
+	ServerHost 		string `env:"SERVER_HOST,required"`
+	ServerPort 		string `env:"SERVER_PORT,required"`
+	// db cfg
+	DBUrl 			string `env:"DB_URL,required"`
+	// 
+	OuterAPI 		string `env:"OUTER_API,required"`
 }
 
-type Server struct {
-	Host string `yaml:"host"`
-	Port string `yaml:"port"`
-}
+func LoadConfig() (*Config, error) {
+	// read cfg path env var
+	cfgPath, ok := os.LookupEnv("CONFIG_PATH")
+	if !ok {
+		cfgPath = defaultCfgPath
+	}
 
-type DB struct {
-	User 	   string `yaml:"user"`
-	Password   string `yaml:"password"`
-	Name 	   string `yaml:"name"`
-	Host 	   string `yaml:"host"`
-	Port 	   string `yaml:"port"`
-}
-
-func LoadConfig(cfgPath string) (*Config, error) {
+	// read .env
 	var cfg Config
-
 	err := cleanenv.ReadConfig(cfgPath, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error occurred while loading config: %v", err)

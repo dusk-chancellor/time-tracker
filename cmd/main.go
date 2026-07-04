@@ -15,16 +15,10 @@ import (
 const (
 	envDev  = "dev"
 	envProd = "prod"
-	defaultCfgPath = "./configs/local.yaml"
 )
 
 func main() {
-	cfgPath, ok := os.LookupEnv("CONFIG_PATH")
-	if !ok {
-		cfgPath = defaultCfgPath
-	}
-
-	cfg, err := configs.LoadConfig(cfgPath)
+	cfg, err := configs.LoadConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +28,7 @@ func main() {
 
 	app := app.NewApp(ctx, logger, cfg)
 
-	fmt.Printf("Server started at %s\n", cfg.Server.Host + ":" + cfg.Server.Port)
+	fmt.Printf("Server started at %s\n", cfg.ServerHost + ":" + cfg.ServerPort)
 	go func() {
 		if err := app.Run(); err != nil {
 			panic(err)
@@ -51,10 +45,10 @@ func main() {
 func initLogger(env string) *slog.Logger {
 	var logger *slog.Logger
 	switch env {
-	case envDev:
-		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case envProd:
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	default:
+		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	}
 	return logger
 }

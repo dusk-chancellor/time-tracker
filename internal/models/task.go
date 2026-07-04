@@ -11,5 +11,5 @@ type Task struct {
 	EndTime   	time.Time
 	CreatedAt 	time.Time
 	UpdatedAt 	time.Time
-	SpentTime 	time.Time
+	SpentTime 	time.Duration
 }

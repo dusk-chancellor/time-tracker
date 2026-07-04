@@ -14,11 +14,12 @@ type PassportRequest struct {
 
 func (h *Handlers) GetAllUsersDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx := r.Context()
 
 	filter := r.URL.Query().Get("filter")
 	page := r.URL.Query().Get("page")
 
-	data, err := h.srv.GetAllUsersData(h.ctx, filter, page)
+	data, err := h.srv.GetAllUsersData(ctx, filter, page)
 	if err != nil {
 		h.logger.Error(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -30,13 +31,12 @@ func (h *Handlers) GetAllUsersDataHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 
 func (h *Handlers) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx := r.Context()
 
 	var passport PassportRequest
 	if err := json.NewDecoder(r.Body).Decode(&passport); err != nil {
@@ -45,21 +45,21 @@ func (h *Handlers) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := h.srv.CreateUser(h.ctx, passport.PassportNumber)
+	userID, err := h.srv.CreateUser(ctx, passport.PassportNumber)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	http.SetCookie(w, &http.Cookie{Name: "user_id", Value: userID})
-	resp := fmt.Sprintf("User created successfully, your id: %s", userID)
+	resp := fmt.Sprintf("ID: %s", userID)
 	w.Write([]byte(resp))
-	w.WriteHeader(http.StatusOK)
 }
 
 // fix:
 func (h *Handlers) EditUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx := r.Context()
 
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
@@ -68,7 +68,7 @@ func (h *Handlers) EditUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.srv.EditUser(h.ctx, user)
+	_, err := h.srv.EditUser(ctx, &user)
 	if err != nil {
 		h.logger.Error(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -77,11 +77,11 @@ func (h *Handlers) EditUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp := fmt.Sprintf("User %s edited successfully", user.Name)
 	w.Write([]byte(resp))
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handlers) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx := r.Context()
 
 	var passport PassportRequest
 	if err := json.NewDecoder(r.Body).Decode(&passport); err != nil {
@@ -90,11 +90,9 @@ func (h *Handlers) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.srv.DeleteUser(h.ctx, passport.PassportNumber); err != nil {
+	if err := h.srv.DeleteUser(ctx, passport.PassportNumber); err != nil {
 		h.logger.Error(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }

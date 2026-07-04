@@ -9,12 +9,13 @@ import (
 
 type TaskResponse struct {
 	User  string `json:"user"`
-	Tasks []models.Task `json:"tasks"`
+	Tasks []*models.Task `json:"tasks"`
 }
 
 
 func (h *Handlers) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx := r.Context()
 
 	var task models.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
@@ -26,7 +27,7 @@ func (h *Handlers) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) 
 	action := r.URL.Query().Get("action")
 	switch action {
 	case startTask:
-		taskID, err := h.srv.StartTask(h.ctx, task)
+		taskID, err := h.srv.StartTask(ctx, &task)
 		if err != nil {
 			h.logger.Error(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -34,9 +35,8 @@ func (h *Handlers) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		w.Write([]byte(taskID))
-		w.WriteHeader(http.StatusOK)
 	case stopTask:
-		taskID, err := h.srv.StopTask(h.ctx, task.Name)
+		taskID, err := h.srv.StopTask(ctx, task.Name)
 		if err != nil {
 			h.logger.Error(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -44,7 +44,6 @@ func (h *Handlers) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		w.Write([]byte(taskID))
-		w.WriteHeader(http.StatusOK)
 	default:
 		h.logger.Error("Invalid 'action' query")
 		http.Error(w, "Invalid 'action' query", http.StatusBadRequest)
@@ -54,6 +53,8 @@ func (h *Handlers) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) 
 
 func (h *Handlers) GetUserWorklistHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx := r.Context()
+
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		userIDCookie, err := r.Cookie(userIDCookie)
@@ -70,7 +71,7 @@ func (h *Handlers) GetUserWorklistHandler(w http.ResponseWriter, r *http.Request
 		userID = userIDCookie.Value
 	}
 
-	tasks, err := h.srv.GetUserWorklist(h.ctx, userID)
+	tasks, err := h.srv.GetUserWorklist(ctx, userID)
 	if err != nil {
 		h.logger.Error(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

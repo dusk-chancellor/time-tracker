@@ -10,8 +10,8 @@ import (
 	"github.com/dusk-chancellor/time-tracker/internal/models"
 )
 
-func (s *Service) GetAllUsersData(ctx context.Context, filter, page string) ([]models.User, error) {
-	users, err := s.DBMethods.GetAllUsers(ctx)
+func (s *Service) GetAllUsersData(ctx context.Context, filter, page string) ([]*models.User, error) {
+	users, err := s.UserRepo.GetAllUsers(ctx)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return nil, err
@@ -24,18 +24,15 @@ func (s *Service) GetAllUsersData(ctx context.Context, filter, page string) ([]m
 		return nil, ErrUknownFilter
 	}
 
-	var pagedUsers [][]models.User
+	var pagedUsers [][]*models.User
 	chunkSize := 10
 	for i := 0; i < len(filteredUsers); i += chunkSize {
-		end := i + chunkSize
-		if end > len(filteredUsers) {
-			end = len(filteredUsers)
-		}
+		end := min(i + chunkSize, len(filteredUsers))
 		pagedUsers = append(pagedUsers, filteredUsers[i:end])
 	}
 
 	if page == "" {
-		return pagedUsers[0], nil
+		return nil, nil
 	}
 	pageInt, err := strconv.Atoi(page)
 	if err != nil {
@@ -54,38 +51,40 @@ func (s *Service) CreateUser(ctx context.Context, passport string) (string, erro
 		return "", err
 	}
 
-	user := models.User{
+	user := &models.User{
 		PassportSerie:  int32(pSerie),
 		PassportNumber: int32(pNumber),
 		Surname:        people.Surname,
 		Name:           people.Name,
-		Patronymic:     *people.Patronymic,
 		Address:        people.Address,
 	}
+	if *people.Patronymic != "" {
+		user.Patronymic = *people.Patronymic
+	}
 
-	userID, err := s.DBMethods.AddUser(ctx, user)
+	userID, err := s.UserRepo.AddUser(ctx, user)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
 	}
 
 	s.logger.Info("User %s created, id: %s", user.Name, userID)
-	return string(userID), nil
+	return strconv.Itoa(int(userID)), nil
 }
 
-func (s *Service) EditUser(ctx context.Context, newUser models.User) (string, error) {
+func (s *Service) EditUser(ctx context.Context, newUser *models.User) (string, error) {
 	if newUser.PassportSerie == 0 || newUser.PassportNumber == 0 {
 		s.logger.Error("Passport number or passport serie is empty")
 		return "", nil
 	}
-	oldUser, err := s.DBMethods.GetUser(ctx, newUser.PassportSerie, newUser.PassportNumber)
+	oldUser, err := s.UserRepo.GetUser(ctx, newUser.PassportSerie, newUser.PassportNumber)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
 	}
-	updatedUser := mergeUserInfo(oldUser, newUser)
+	updatedUser := mergeUserInfo(*oldUser, *newUser)
 
-	userID, err := s.DBMethods.UpdateUser(ctx, updatedUser)
+	userID, err := s.UserRepo.UpdateUser(ctx, updatedUser)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
@@ -100,7 +99,7 @@ func (s *Service) DeleteUser(ctx context.Context, passport string) error {
 	pSerie, _ := strconv.Atoi(p[0])
 	pNumber, _ := strconv.Atoi(p[1])
 
-	err := s.DBMethods.DeleteUser(ctx, int32(pSerie), int32(pNumber))
+	err := s.UserRepo.DeleteUser(ctx, int32(pSerie), int32(pNumber))
 	if err != nil {
 		s.logger.Error(err.Error())
 		return err
@@ -110,7 +109,7 @@ func (s *Service) DeleteUser(ctx context.Context, passport string) error {
 	return nil
 }
 
-func filterFunc(users []models.User, filter string) []models.User {
+func filterFunc(users []*models.User, filter string) []*models.User {
 	switch filter {
 	case filterByID:
 		sort.Slice(users, func(i, j int) bool {
@@ -144,7 +143,7 @@ func filterFunc(users []models.User, filter string) []models.User {
 	return users
 }
 
-func mergeUserInfo(oldUser models.User, newUser models.User) models.User {
+func mergeUserInfo(oldUser models.User, newUser models.User) *models.User {
 	newReflect := reflect.ValueOf(&newUser).Elem()
 	oldReflect := reflect.ValueOf(oldUser)
 	for i := 0; i < oldReflect.NumField(); i++ {
@@ -153,5 +152,5 @@ func mergeUserInfo(oldUser models.User, newUser models.User) models.User {
             newReflect.Field(i).Set(oldReflect.Field(i))
         }
 	}
-	return newUser
+	return &newUser
 }

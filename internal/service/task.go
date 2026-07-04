@@ -10,55 +10,54 @@ import (
 )
 
 
-func (s *Service) StartTask(ctx context.Context, task models.Task) (string, error) {
+func (s *Service) StartTask(ctx context.Context, task *models.Task) (string, error) {
 	now := time.Now()
-	exists, err := s.DBMethods.TaskExists(ctx, task.Name)
+	exists, err := s.TaskRepo.TaskExists(ctx, task.Name)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
 	}
 	if exists {
-		taskID, err := s.DBMethods.UpdateTaskStart(ctx, now, task.Name)
+		err := s.TaskRepo.UpdateTaskStart(ctx, now, task.Name)
 		if err != nil {
 			s.logger.Error(err.Error())
 			return "", err
 		}
 		s.logger.Info("Task updated")
-		return string(taskID), nil
+		return strconv.Itoa(int(task.Id)), nil
 	}
 
-	taskID, err := s.DBMethods.CreateTask(ctx, task)
+	taskID, err := s.TaskRepo.CreateTask(ctx, task)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
 	}
 	s.logger.Info("Task created")
-	return string(taskID), nil
+	return strconv.Itoa(int(taskID)), nil
 }
 
 func (s *Service) StopTask(ctx context.Context, taskName string) (string, error) {
-	task, err := s.DBMethods.GetTask(ctx, taskName)
+	task, err := s.TaskRepo.GetTask(ctx, taskName)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
 	}
 	
 	now := time.Now()
-	spentTime := task.SpentTime.Add(now.Sub(task.StartTime))
 
-	taskID, err := s.DBMethods.UpdateTaskEnd(ctx, now, spentTime, taskName)
+	err = s.TaskRepo.UpdateTaskEnd(ctx, now, task.SpentTime, taskName)
 	if err != nil {
 		s.logger.Error(err.Error())
 		return "", err
 	}
 
 	s.logger.Info("Task updated")
-	return string(taskID), nil
+	return string(task.Id), nil
 }
 
-func (s *Service) GetUserWorklist(ctx context.Context, userID string) ([]models.Task, error) {
+func (s *Service) GetUserWorklist(ctx context.Context, userID string) ([]*models.Task, error) {
 	userIDInt, _ := strconv.Atoi(userID)
-	tasks, err := s.DBMethods.GetAllTasksByUserID(ctx, int32(userIDInt))
+	tasks, err := s.TaskRepo.GetAllTasksByUserID(ctx, int32(userIDInt))
 	if err != nil {
 		s.logger.Error(err.Error())
 		return nil, err
@@ -69,7 +68,7 @@ func (s *Service) GetUserWorklist(ctx context.Context, userID string) ([]models.
 	}
 	
 	sort.Slice(tasks, func(i, j int) bool {
-		return tasks[i].SpentTime.After(tasks[j].SpentTime)
+		return tasks[i].SpentTime < (tasks[j].SpentTime)
 	})
 
 	s.logger.Info("User worklist fetched")

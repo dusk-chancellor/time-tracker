@@ -2,40 +2,39 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/dusk-chancellor/time-tracker/configs"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Storage struct {
-	logger *slog.Logger
-	pool *pgxpool.Pool
-}
-
-func NewDB(cfg *configs.Config, logger *slog.Logger) (*Storage, error) {
-	connStr := fmt.Sprintf(
-		"postgresql://%s:%s@%s:%s/%s?sslmode=disable&pool_max_conns=10&pool_max_conn_lifetime=1h30m",
-		cfg.DB.User,
-		cfg.DB.Password,
-		cfg.DB.Host,
-		cfg.DB.Port,
-		cfg.DB.Name,
-	)
-
-	dbCfg, err := pgxpool.ParseConfig(connStr)
+func ConnectDB(cfg *configs.Config, l *slog.Logger) (*pgxpool.Pool, error) {
+	// build pool cfg
+	poolCfg, err := pgxpool.ParseConfig(cfg.DBUrl)
 	if err != nil {
+		l.Error(err.Error())
 		return nil, err
 	}
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), dbCfg)
+	poolCfg.MinConns = 2
+	poolCfg.MaxConns = 10
+	poolCfg.MaxConnLifetime = time.Hour
+	poolCfg.HealthCheckPeriod = time.Minute
+	// set up pool
+	var ctx = context.Background()
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
+		l.Error(err.Error())
 		return nil, err
 	}
 
-	return &Storage{
-		logger: logger,
-		pool: pool,
-	}, err
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		l.Error(err.Error())
+		return nil, err
+	}
+
+	l.Info("succesful db pool connection")
+	return pool, err
 }
